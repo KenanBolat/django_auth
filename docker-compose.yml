@@ -1,0 +1,32 @@
+version: '3'
+services:
+  web:
+    build: backend/.
+    command: bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --no-input && python manage.py runserver 0:8000"
+    restart: unless-stopped
+    container_name: web
+    volumes:
+      - .:/code
+    ports:
+      - "8002:8000"
+      - "82:80"
+    depends_on:
+      - elasticsearch
+    networks:
+      - mynetwork
+  elasticsearch:
+    image: launcher.gcr.io/google/elasticsearch2
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - mynetwork
+volumes:
+  postgres-data:
+  esdata:
+    driver: local
+networks:
+  mynetwork:
+    driver: bridge

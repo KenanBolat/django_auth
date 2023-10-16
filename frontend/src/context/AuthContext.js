@@ -1,43 +1,49 @@
-import React, { createContext, useState, useEffect} from 'react'
-import jwt_decode from 'jwt-decode'; 
-import {useHistory } from 'react-router-dom';
+import React, { createContext, useState, useEffect } from 'react'
+import jwt_decode from 'jwt-decode';
+import { useHistory } from 'react-router-dom';
+
 const AuthContext = createContext()
 
 export default AuthContext;
 
 export const AuthProvider = ({ children }) => {
-    
-    let [authTokens, setAuthTokens] = useState(() => localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null )
-    let [user, setUser] = useState(() => localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null )
+
+
+    let [authTokens, setAuthTokens] = useState(() => localStorage.getItem('authTokens') ? JSON.parse(localStorage.getItem('authTokens')) : null)
+    let [user, setUser] = useState(() => localStorage.getItem('authTokens') ? jwt_decode(localStorage.getItem('authTokens')) : null)
     let [loading, setLoading] = useState(true)
+    
+    const history = useHistory()
 
-    let history = useHistory()
-
-    let loginUser = async(e ) => {
+    let loginUser = async (e) => {
 
         e.preventDefault()
-        let response = await fetch('http://localhost:8000/api/token/', { 
-        method:'POST',
-        headers:{ 'Content-Type':'application/json'},
-        body:JSON.stringify({ 
-            'username':e.target.username.value,
-            'password':e.target.password.value
-        }),
+        let response = await fetch('http://localhost:8000/api/token/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                'username': e.target.username.value,
+                'password': e.target.password.value
+            }),
         })
         let data = await response.json()
-        console.log("data:",  data)
-        console.log("response:",response)
-        if(response.status === 200){
+        console.log("data:", data)
+        console.log("response:", response)
+        if (response.status === 200) {
 
             setAuthTokens(data)
             setUser(jwt_decode(data.access))
             localStorage.setItem('authTokens', JSON.stringify(data))
             history.push('/')
+
         } else {
+
+            alert('Something Went wrong')
             console.log("Invalid credentials")
+
         }
     }
-    
+
     let logoutUser = () => {
         setAuthTokens(null)
         setUser(null)
@@ -47,50 +53,48 @@ export const AuthProvider = ({ children }) => {
 
 
     let updateToken = async () => {
-        console.log('Update Token Called!!')
 
-        let response = await fetch('http://localhost:8000/api/token/refresh/', { 
-        method:'POST',
-        headers:{ 'Content-Type':'application/json'},
-        body:JSON.stringify({ 
-            'refresh': authTokens.refresh
-        }),
+        let response = await fetch('http://localhost:8000/api/token/refresh/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'refresh': authTokens.refresh }),
         })
+
         let data = await response.json()
-        console.log("data:",  data)
-        console.log("response:",response)
-        if(response.status === 200){
+
+        if (response.status === 200) {
             setAuthTokens(data)
             setUser(jwt_decode(data.access))
             localStorage.setItem('authTokens', JSON.stringify(data))
         } else {
             logoutUser()
         }
+        if(loading) {
+            setLoading(false)
+        }
     }
 
-    let contextData = {  
+    let contextData = {
         user:user,
-        authTokens:authTokens, 
+        authTokens:authTokens,
         loginUser:loginUser,
-        logoutUser:logoutUser, 
-
-
+        logoutUser:logoutUser,
     }
 
-    useEffect(()=> {
-        let fourMinutes = 1000*600*4 ;
-        let interval = setInterval(()=> {
-            if(authTokens){
+    useEffect(() => {
+        let fourMinutes = 1000 * 60 * 4;
+        let interval = setInterval(() => {
+            if (authTokens) {
                 updateToken()
             }
         }, fourMinutes)
-        return () => clearInterval(interval) 
+        return () => clearInterval(interval)
 
     }, [authTokens, loading])
 
-    return(
-        <AuthContext.Provider value={contextData}> 
-        {children}
+    return (
+        <AuthContext.Provider value={contextData}>
+            {children}
         </AuthContext.Provider>
     )
 }
